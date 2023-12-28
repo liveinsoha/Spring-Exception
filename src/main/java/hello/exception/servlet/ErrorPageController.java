@@ -1,12 +1,19 @@
 package hello.exception.servlet;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.util.NestedServletException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Controller
 @Slf4j
@@ -51,6 +58,43 @@ public class ErrorPageController {
         log.info("ERROR_STATUS_CODE: {}", request.getAttribute(ERROR_STATUS_CODE));
         log.info("dispatchType={}", request.getDispatcherType());
     }
+
+    /**
+     * WAS는 오류 페이지를 단순히 다시 요청만 하는 것이 아니라, 오류 정보를 `request` 의 `attribute` 에 추가해서 넘겨준다.
+     * 필요하면 오류 페이지에서 이렇게 전달된 오류 정보를 사용할 수 있다.
+     * request.attribute에 서버가 담아준 정보**
+     * `javax.servlet.error.exception` : 예외
+     * `javax.servlet.error.exception_type` : 예외 타입
+     * `javax.servlet.error.message` : 오류 메시지
+     * `javax.servlet.error.request_uri` : 클라이언트 요청 URI
+     * `javax.servlet.error.servlet_name` : 오류가 발생한 서블릿 이름
+     * `javax.servlet.error.status_code` : HTTP 상태 코드
+     */
+
+
+    /**
+     * produces = MediaType.APPLICATION_JSON_VALUE` 의 뜻은 클라이언트가 요청하는 HTTP Header의
+     * `Accept` 의 값이 `application/json` 일 때 해당 메서드가 호출된다는 것이다. 결국 클라어인트가 받고 싶은 미디어
+     * 타입이 json이면 이 컨트롤러의 메서드가 호출된다.
+     * 응답 데이터를 위해서 `Map` 을 만들고 `status` , `message` 키에 값을 할당했다. Jackson 라이브러리는 `Map` 을
+     * JSON 구조로 변환할 수 있다.
+     * `ResponseEntity` 를 사용해서 응답하기 때문에 메시지 컨버터가 동작하면서 클라이언트에 JSON이 반환된다.
+     */
+    @RequestMapping(value = "/error-page/500", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> errorPage500Api(HttpServletRequest request, HttpServletResponse response) {
+        log.info("errorPage500Api");
+
+        Exception ex = (Exception) request.getAttribute(ERROR_EXCEPTION);
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", request.getAttribute(ERROR_STATUS_CODE));
+        result.put("message", ex.getMessage());
+
+        Integer statusCode = (Integer) request.getAttribute(ERROR_STATUS_CODE);
+        return new ResponseEntity<>(result, HttpStatus.valueOf(statusCode));
+    }
+    //객체를 사용하는 게 더 낫긴 한데 예제니까 맵을 사용..
+
+
 }
 
 
